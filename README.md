@@ -1,5 +1,7 @@
 # github-informer
 
+[![tests](https://github.com/Pacobart/github-informer/actions/workflows/actions.yml/badge.svg)](https://github.com/Pacobart/github-informer/actions/workflows/actions.yml)
+
 ## Prompt:
 
 
