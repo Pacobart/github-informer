@@ -11,26 +11,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type IssuesSearchResult struct {
-	Total             *int
-	IncompleteResults *bool
-	Issues            []*Issue
-}
-
-type Issue []struct {
-	ID        *int64
-	Number    *int
-	State     *string
-	Locked    *bool
-	Title     *string
-	Body      *string
-	ClosedAt  *time.Time
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
-	URL       *string
-	HTMLURL   *string
-}
-
 type IssuesCombined struct {
 	StartDate    string
 	EndDate      string
