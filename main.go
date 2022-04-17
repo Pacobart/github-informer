@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
+	"net/smtp"
 	"os"
+	"text/template"
 	"time"
 
 	"github.com/google/go-github/github"
@@ -12,6 +15,7 @@ import (
 )
 
 type IssuesCombined struct {
+	Repo         string
 	StartDate    string
 	EndDate      string
 	ClosedIssues *github.IssuesSearchResult
@@ -58,29 +62,87 @@ func getDraft(authToken string, repo string, startDate string, endDate string) *
 	return draftSearchData
 }
 
-func createMessaging(issues IssuesCombined, emailAddress string, printToScreen bool, sendEmail bool) {
-	if printToScreen {
-		fmt.Println("From: githubsummary@somesite.com")
-		fmt.Printf("To: %s\n", emailAddress)
-		fmt.Println("Subject: Last weeks insights")
-		fmt.Println("Body:")
-		fmt.Println("Over the last week:")
-		fmt.Printf("%d Pull Requests Closed\n", len(issues.ClosedIssues.Issues))
-		for _, v := range issues.ClosedIssues.Issues {
-			fmt.Printf(" - %s\n", *v.Title)
-		}
-		fmt.Printf("%d Pull Requests Open\n", len(issues.OpenIssues.Issues))
-		for _, v := range issues.OpenIssues.Issues {
-			fmt.Printf(" - %s\n", *v.Title)
-		}
-		fmt.Printf("%d Pull Requests in Draft state\n", len(issues.DraftIssues.Issues))
-		for _, v := range issues.DraftIssues.Issues {
-			fmt.Printf(" - %s\n", *v.Title)
-		}
+func buildPrintMessage(issues IssuesCombined, fromAddress string, toAddress string) string {
+	printText := ""
+	printText += fmt.Sprintf("From: %s\n", fromAddress)
+	printText += fmt.Sprintf("To: %s\n", toAddress)
+	printText += fmt.Sprintf("Subject: Last weeks insights for: %s\n", issues.Repo)
+	printText += "Body:\n"
+	printText += "Over the last week:\n"
+	printText += fmt.Sprintf("%d Pull Requests Closed\n", len(issues.ClosedIssues.Issues))
+	for _, v := range issues.ClosedIssues.Issues {
+		printText += fmt.Sprintf(" - %s\n", *v.Title)
+	}
+	printText += fmt.Sprintf("%d Pull Requests Open\n", len(issues.OpenIssues.Issues))
+	for _, v := range issues.OpenIssues.Issues {
+		printText += fmt.Sprintf(" - %s\n", *v.Title)
+	}
+	printText += fmt.Sprintf("%d Pull Requests in Draft state\n", len(issues.DraftIssues.Issues))
+	for _, v := range issues.DraftIssues.Issues {
+		printText += fmt.Sprintf(" - %s\n", *v.Title)
 	}
 
-	if sendEmail {
-		fmt.Println("Will send email after I write logic.")
+	return printText
+}
+
+func sendEmail(issues IssuesCombined, fromAddress string, toAddresses []string, dryrun bool) (string, error) {
+	smtpHost := "smtp.gmail.com"
+	smtpPort := "587"
+	authPassword := os.Getenv("SMTP_PASSWORD")
+
+	if fromAddress != "" {
+		auth := smtp.PlainAuth("", fromAddress, authPassword, smtpHost)
+
+		t, _ := template.ParseFiles("email_template.html")
+
+		var body bytes.Buffer
+
+		mimeHeaders := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+		body.Write([]byte(fmt.Sprintf("Subject: Weekly GitHub Pull Request Data for: %s \n%s\n\n", issues.Repo, mimeHeaders)))
+
+		closedIssueshtml := ""
+		for _, v := range issues.ClosedIssues.Issues {
+			closedIssueshtml += fmt.Sprintf("<li><a href=\"%s\">%s</a></li>", *v.HTMLURL, *v.Title)
+		}
+
+		openIssueshtml := ""
+		for _, v := range issues.OpenIssues.Issues {
+			openIssueshtml += fmt.Sprintf("<a href=\"%s\"><li>%s</a></li>", *v.HTMLURL, *v.Title)
+		}
+
+		draftIssueshtml := ""
+		for _, v := range issues.DraftIssues.Issues {
+			draftIssueshtml += fmt.Sprintf("<a href=\"%s\"><li>%s</a></li>", *v.HTMLURL, *v.Title)
+		}
+
+		t.Execute(&body, struct {
+			ClosedIssueCount int
+			OpenIssueCount   int
+			DraftIssueCount  int
+			ClosedIssues     string
+			OpenIssues       string
+			DraftIssues      string
+		}{
+			ClosedIssueCount: len(issues.ClosedIssues.Issues),
+			OpenIssueCount:   len(issues.OpenIssues.Issues),
+			DraftIssueCount:  len(issues.DraftIssues.Issues),
+			ClosedIssues:     closedIssueshtml,
+			OpenIssues:       openIssueshtml,
+			DraftIssues:      draftIssueshtml,
+		})
+
+		if !dryrun {
+			err := smtp.SendMail(smtpHost+":"+smtpPort, auth, fromAddress, toAddresses, body.Bytes())
+			if err != nil {
+				return "", fmt.Errorf(err.Error())
+			}
+			return fmt.Sprintf("email sent to: %s", toAddresses), nil
+		} else {
+			return "dry run enabled, no email sent", nil
+		}
+
+	} else {
+		return "", fmt.Errorf("from email address required")
 	}
 }
 
@@ -91,14 +153,25 @@ func main() {
 	fmt.Printf("using daterange: %s - %s\n", githubDateLastWeek, githubDateToday)
 
 	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
-	emailAddress := os.Getenv("EMAIL_ADDRESS_TO")
+	fromEmailAddress := os.Getenv("EMAIL_ADDRESS_FROM")
+	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
 	repo := "freeCodeCamp/freeCodeCamp"
 
 	var issues IssuesCombined
+	issues.Repo = repo
 	issues.StartDate = githubDateLastWeek
 	issues.EndDate = githubDateToday
 	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
 	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
 	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
-	createMessaging(issues, emailAddress, true, false)
+
+	printMessage := buildPrintMessage(issues, fromEmailAddress, toEmailAddress)
+	fmt.Println(printMessage)
+
+	var toAddresses = []string{toEmailAddress}
+	emailStatus, err := sendEmail(issues, fromEmailAddress, toAddresses, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(emailStatus)
 }
