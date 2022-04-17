@@ -3,6 +3,9 @@ SHELL := /bin/bash
 build:
 	go build -o main main.go
 
+build-windows:
+  GOOS=windows GOARCH=amd64 go build -o main.go
+
 debug:
 	go run main.go
 

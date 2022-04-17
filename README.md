@@ -17,7 +17,12 @@ During the next interview, we ask that you share your screen and demonstrate the
 
 App looks for environment variables:
 - `GITHUB_PERSONAL_ACCESS_TOKEN` = gitlab personal access token
+- `EMAIL_ADDRESS_FROM` = email address to send summary from
 - `EMAIL_ADDRESS_TO` = email address to send summary to
+- `SMTP_PASSEORD` = password associated with `EMAIL_ADDRESS_FROM`
+
+
+To send emails using gmail's smtp server, allow less secure apps: https://myaccount.google.com/lesssecureapps
 
 Makefile created to debug, test, build etc.
 
