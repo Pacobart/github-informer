@@ -85,7 +85,7 @@ func buildPrintMessage(issues IssuesCombined, fromAddress string, toAddress stri
 	return printText
 }
 
-func sendEmail(issues IssuesCombined, fromAddress string, toAddresses []string) {
+func sendEmail(issues IssuesCombined, fromAddress string, toAddresses []string, dryrun bool) (string, error) {
 	smtpHost := "smtp.gmail.com"
 	smtpPort := "587"
 	authPassword := os.Getenv("SMTP_PASSWORD")
@@ -131,14 +131,18 @@ func sendEmail(issues IssuesCombined, fromAddress string, toAddresses []string) 
 			DraftIssues:      draftIssueshtml,
 		})
 
-		err := smtp.SendMail(smtpHost+":"+smtpPort, auth, fromAddress, toAddresses, body.Bytes())
-		if err != nil {
-			fmt.Println(err)
-			return
+		if !dryrun {
+			err := smtp.SendMail(smtpHost+":"+smtpPort, auth, fromAddress, toAddresses, body.Bytes())
+			if err != nil {
+				return "", fmt.Errorf(err.Error())
+			}
+			return fmt.Sprintf("email sent to: %s", toAddresses), nil
+		} else {
+			return "dry run enabled, no email sent", nil
 		}
-		fmt.Printf("Email sent to: %s\n", toAddresses)
+
 	} else {
-		fmt.Println("From email address required")
+		return "", fmt.Errorf("from email address required")
 	}
 }
 
@@ -163,6 +167,11 @@ func main() {
 
 	printMessage := buildPrintMessage(issues, fromEmailAddress, toEmailAddress)
 	fmt.Println(printMessage)
+
 	var toAddresses = []string{toEmailAddress}
-	sendEmail(issues, fromEmailAddress, toAddresses)
+	emailStatus, err := sendEmail(issues, fromEmailAddress, toAddresses, false)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(emailStatus)
 }

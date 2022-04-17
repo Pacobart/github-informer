@@ -37,7 +37,7 @@ func TestSearchGitHubDraft(t *testing.T) {
 	githubDateLastWeek := "2022-04-07"
 	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
 	closedSearchQuery := fmt.Sprintf("repo:freeCodeCamp/freeCodeCamp is:pr is:draft created:%s..%s", githubDateLastWeek, githubDateToday)
-	closedSearchData := searchGithub(githubToken, closedSearchQuery) //authenticated
+	closedSearchData := searchGithub(githubToken, closedSearchQuery)
 
 	actual := *closedSearchData.Issues[0].State
 	expected := "open"
@@ -50,7 +50,8 @@ func TestGetClosed(t *testing.T) {
 	githubDateToday := "2022-04-14"
 	githubDateLastWeek := "2022-04-07"
 	repo := "freeCodeCamp/freeCodeCamp"
-	data := getClosed("", repo, githubDateLastWeek, githubDateToday) //unathenticated
+	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+	data := getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
 	var issues IssuesCombined
 	issues.ClosedIssues = data
 	expected := *issues.ClosedIssues.Issues[0].ID
@@ -64,7 +65,8 @@ func TestGetOpen(t *testing.T) {
 	githubDateToday := "2022-04-14"
 	githubDateLastWeek := "2022-04-07"
 	repo := "freeCodeCamp/freeCodeCamp"
-	data := getOpen("", repo, githubDateLastWeek, githubDateToday) //unathenticated
+	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+	data := getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
 	var issues IssuesCombined
 	issues.OpenIssues = data
 	expected := *issues.OpenIssues.Issues[0].ID
@@ -78,7 +80,8 @@ func TestGetDraft(t *testing.T) {
 	githubDateToday := "2022-04-14"
 	githubDateLastWeek := "2022-04-07"
 	repo := "freeCodeCamp/freeCodeCamp"
-	data := getDraft("", repo, githubDateLastWeek, githubDateToday) //unathenticated
+	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+	data := getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
 	var issues IssuesCombined
 	issues.DraftIssues = data
 	expected := *issues.DraftIssues.Issues[0].ID
@@ -87,3 +90,100 @@ func TestGetDraft(t *testing.T) {
 		t.Error(fmt.Sprintf("GetDraft failed, got %d want %d", actual, expected))
 	}
 }
+
+// TODO: fix this test...doesn't seem to be running.
+func TestbuildPrintMessage(t *testing.T) {
+	githubDateToday := "2022-04-14"
+	githubDateLastWeek := "2022-04-07"
+	repo := "freeCodeCamp/freeCodeCamp"
+	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+	var issues IssuesCombined
+	issues.Repo = repo
+	issues.StartDate = githubDateLastWeek
+	issues.EndDate = githubDateToday
+	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+
+	fromEmailAddress := os.Getenv("EMAIL_ADDRESS_FROM")
+	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
+
+	actual := buildPrintMessage(issues, fromEmailAddress, toEmailAddress)
+	expected := "12345"
+	if actual != expected {
+		t.Error(fmt.Sprintf("BuildPrintMessage failed, got %s want %s", actual, expected))
+	}
+}
+
+func TestSendEmailDryRun(t *testing.T) {
+	githubDateToday := "2022-04-14"
+	githubDateLastWeek := "2022-04-07"
+	repo := "freeCodeCamp/freeCodeCamp"
+	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+	var issues IssuesCombined
+	issues.Repo = repo
+	issues.StartDate = githubDateLastWeek
+	issues.EndDate = githubDateToday
+	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+
+	fromEmailAddress := os.Getenv("EMAIL_ADDRESS_FROM")
+	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
+	var toAddresses = []string{toEmailAddress}
+
+	actual, _ := sendEmail(issues, fromEmailAddress, toAddresses, true)
+	expected := "dry run enabled, no email sent"
+	if actual != expected {
+		t.Error(fmt.Sprintf("SendEmail failed, got %s want %s", actual, expected))
+	}
+}
+
+func TestSendEmail(t *testing.T) {
+	githubDateToday := "2022-04-14"
+	githubDateLastWeek := "2022-04-07"
+	repo := "freeCodeCamp/freeCodeCamp"
+	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+	var issues IssuesCombined
+	issues.Repo = repo
+	issues.StartDate = githubDateLastWeek
+	issues.EndDate = githubDateToday
+	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+
+	fromEmailAddress := os.Getenv("EMAIL_ADDRESS_FROM")
+	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
+	var toAddresses = []string{toEmailAddress}
+
+	actual, _ := sendEmail(issues, fromEmailAddress, toAddresses, false)
+	expected := fmt.Sprintf("email sent to: %s", toAddresses)
+	if actual != expected {
+		t.Error(fmt.Sprintf("SendEmail failed, got \"%s\" want \"%s\"", actual, expected))
+	}
+}
+
+// TODO: not sure why test failing...
+//func TestSendEmailNoEmail(t *testing.T) {
+//	githubDateToday := "2022-04-14"
+//	githubDateLastWeek := "2022-04-07"
+//	repo := "freeCodeCamp/freeCodeCamp"
+//	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+//	var issues IssuesCombined
+//	issues.Repo = repo
+//	issues.StartDate = githubDateLastWeek
+//	issues.EndDate = githubDateToday
+//	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+//	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+//	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+//
+//	fromEmailAddress := ""
+//	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
+//	var toAddresses = []string{toEmailAddress}
+//
+//	_, err := sendEmail(issues, fromEmailAddress, toAddresses, true)
+//	expected := fmt.Errorf("from email address required")
+//	if err != expected {
+//		t.Error(fmt.Sprintf("SendEmail failed, got \"%v\" want \"%v\"", err, expected))
+//	}
+//}
