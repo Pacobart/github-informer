@@ -36,4 +36,11 @@ jobs:
         run: |
           ls ${{ github.workspace }}
       
-      - run: make test
+      - name: test go code
+        env:
+          GITHUB_PERSONAL_ACCESS_TOKEN: ${{ github.token }}
+          EMAIL_ADDRESS_FROM: ${{ secrets.EMAIL_ADDRESS_FROM }}
+          EMAIL_ADDRESS_TO: ${{ secrets.EMAIL_ADDRESS_TO }}
+          SMTP_PASSWORD:  ${{ secrets.SMTP_PASSWORD }}
+        run: |
+          make test

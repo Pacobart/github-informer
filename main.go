@@ -138,7 +138,7 @@ func sendEmail(issues IssuesCombined, fromAddress string, toAddresses []string, 
 		if !dryrun {
 			err := smtp.SendMail(smtpHost+":"+smtpPort, auth, fromAddress, toAddresses, body.Bytes())
 			if err != nil {
-				return "", fmt.Errorf(err.Error())
+				return "error sending email", fmt.Errorf(err.Error())
 			}
 			return fmt.Sprintf("email sent to: %s", toAddresses), nil
 		} else {
@@ -146,7 +146,7 @@ func sendEmail(issues IssuesCombined, fromAddress string, toAddresses []string, 
 		}
 
 	} else {
-		return "", fmt.Errorf("from email address required")
+		return "no from email address defined", fmt.Errorf("from email address required")
 	}
 }
 
