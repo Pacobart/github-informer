@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/smtp"
 	"os"
+	"sync"
 	"text/template"
 	"time"
 
@@ -44,21 +45,24 @@ func searchGithub(authToken string, searchQuery string) *github.IssuesSearchResu
 	return results
 }
 
-func getClosed(authToken string, repo string, startDate string, endDate string) *github.IssuesSearchResult {
+func (issues *IssuesCombined) getClosed(authToken string, repo string, startDate string, endDate string) *github.IssuesSearchResult {
 	closedSearchQuery := fmt.Sprintf("repo:%s is:pr is:closed merged:%s..%s", repo, startDate, endDate)
 	closedSearchData := searchGithub(authToken, closedSearchQuery)
+	issues.ClosedIssues = closedSearchData
 	return closedSearchData
 }
 
-func getOpen(authToken string, repo string, startDate string, endDate string) *github.IssuesSearchResult {
+func (issues *IssuesCombined) getOpen(authToken string, repo string, startDate string, endDate string) *github.IssuesSearchResult {
 	openSearchQuery := fmt.Sprintf("repo:%s is:pr is:open created:%s..%s", repo, startDate, endDate)
 	openSearchData := searchGithub(authToken, openSearchQuery)
+	issues.OpenIssues = openSearchData
 	return openSearchData
 }
 
-func getDraft(authToken string, repo string, startDate string, endDate string) *github.IssuesSearchResult {
+func (issues *IssuesCombined) getDraft(authToken string, repo string, startDate string, endDate string) *github.IssuesSearchResult {
 	draftSearchQuery := fmt.Sprintf("repo:%s is:pr is:draft created:%s..%s", repo, startDate, endDate)
 	draftSearchData := searchGithub(authToken, draftSearchQuery)
+	issues.DraftIssues = draftSearchData
 	return draftSearchData
 }
 
@@ -157,21 +161,47 @@ func main() {
 	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
 	repo := "freeCodeCamp/freeCodeCamp"
 
+	var wg sync.WaitGroup
+
 	var issues IssuesCombined
 	issues.Repo = repo
 	issues.StartDate = githubDateLastWeek
 	issues.EndDate = githubDateToday
-	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
-	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
-	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
 
-	printMessage := buildPrintMessage(issues, fromEmailAddress, toEmailAddress)
-	fmt.Println(printMessage)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		issues.getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		issues.getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		issues.getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+	}()
+	wg.Wait()
 
-	var toAddresses = []string{toEmailAddress}
-	emailStatus, err := sendEmail(issues, fromEmailAddress, toAddresses, false)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(emailStatus)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var toAddresses = []string{toEmailAddress}
+		emailStatus, err := sendEmail(issues, fromEmailAddress, toAddresses, false)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(emailStatus)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		printMessage := buildPrintMessage(issues, fromEmailAddress, toEmailAddress)
+		fmt.Println(printMessage)
+	}()
+
+	wg.Wait()
 }
