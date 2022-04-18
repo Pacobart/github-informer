@@ -170,7 +170,13 @@ func TestSendEmailDryRun(t *testing.T) {
 	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
 	var toAddresses = []string{toEmailAddress}
 
-	actual, _ := sendEmail(issues, fromEmailAddress, toAddresses, true)
+	actual := ""
+	msg, err := sendEmail(issues, fromEmailAddress, toAddresses, true)
+	if err != nil {
+		actual = string(err.Error())
+	} else {
+		actual = msg
+	}
 	expected := "dry run enabled, no email sent"
 	if actual != expected {
 		t.Error(fmt.Sprintf("SendEmail failed, got %s want %s", actual, expected))
