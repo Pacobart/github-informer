@@ -51,11 +51,10 @@ func TestGetClosed(t *testing.T) {
 	githubDateLastWeek := "2022-04-07"
 	repo := "freeCodeCamp/freeCodeCamp"
 	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
-	data := getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
 	var issues IssuesCombined
-	issues.ClosedIssues = data
-	expected := *issues.ClosedIssues.Issues[0].ID
-	var actual int64 = 1203265483
+	issues.getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+	actual := *issues.ClosedIssues.Issues[0].ID
+	var expected int64 = 1203265483
 	if actual != expected {
 		t.Error(fmt.Sprintf("GetClosed failed, got %d want %d", actual, expected))
 	}
@@ -66,11 +65,10 @@ func TestGetOpen(t *testing.T) {
 	githubDateLastWeek := "2022-04-07"
 	repo := "freeCodeCamp/freeCodeCamp"
 	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
-	data := getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
 	var issues IssuesCombined
-	issues.OpenIssues = data
-	expected := *issues.OpenIssues.Issues[0].ID
-	var actual int64 = 1200189459
+	issues.getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+	actual := *issues.OpenIssues.Issues[0].ID
+	var expected int64 = 1200189459
 	if actual != expected {
 		t.Error(fmt.Sprintf("GetOpen failed, got %d want %d", actual, expected))
 	}
@@ -81,18 +79,16 @@ func TestGetDraft(t *testing.T) {
 	githubDateLastWeek := "2022-04-07"
 	repo := "freeCodeCamp/freeCodeCamp"
 	githubToken := os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
-	data := getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
 	var issues IssuesCombined
-	issues.DraftIssues = data
-	expected := *issues.DraftIssues.Issues[0].ID
-	var actual int64 = 1200189459
+	issues.getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+	actual := *issues.DraftIssues.Issues[0].ID
+	var expected int64 = 1200189459
 	if actual != expected {
 		t.Error(fmt.Sprintf("GetDraft failed, got %d want %d", actual, expected))
 	}
 }
 
-// TODO: fix this test...doesn't seem to be running.
-func TestbuildPrintMessage(t *testing.T) {
+func TestBuildPrintMessage(t *testing.T) {
 	githubDateToday := "2022-04-14"
 	githubDateLastWeek := "2022-04-07"
 	repo := "freeCodeCamp/freeCodeCamp"
@@ -101,17 +97,59 @@ func TestbuildPrintMessage(t *testing.T) {
 	issues.Repo = repo
 	issues.StartDate = githubDateLastWeek
 	issues.EndDate = githubDateToday
-	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
-	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
-	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
 
 	fromEmailAddress := os.Getenv("EMAIL_ADDRESS_FROM")
 	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
 
 	actual := buildPrintMessage(issues, fromEmailAddress, toEmailAddress)
-	expected := "12345"
+	expected := ""
+	expected += "From: pbbarthlome@gmail.com\n"
+	expected += "To: pbbarthlome@gmail.com\n"
+	expected += "Subject: Last weeks insights for: freeCodeCamp/freeCodeCamp\n"
+	expected += "Body:\n"
+	expected += "Over the last week:\n"
+	expected += "30 Pull Requests Closed\n"
+	expected += " - chore(i18n,learn): processed translations\n"
+	expected += " - chore(i18n,docs): processed translations\n"
+	expected += " - fix(curriculum): improve the wording of a challenge\n"
+	expected += " - fix: add message about third-party cookies\n"
+	expected += " - chore(i18n,learn): processed translations\n"
+	expected += " - chore(i18n,client): processed translations\n"
+	expected += " - fix(deps): update dependency react-i18next to v11.16.5\n"
+	expected += " - fix(deps): update dependency react-i18next to v11.16.3\n"
+	expected += " - fix(deps): update dependency @stripe/stripe-js to v1.27.0\n"
+	expected += " - chore(deps): update dependency webpack to v5.72.0\n"
+	expected += " - chore(deps): update dependency @types/enzyme to v3.10.12\n"
+	expected += " - chore(deps): update dependency eslint-plugin-import to v2.26.0\n"
+	expected += " - chore(deps): update dependency @testing-library/dom to v8.13.0\n"
+	expected += " - chore(deps): update codesee to v0.227.0\n"
+	expected += " - fix(deps): update dependency react-instantsearch-dom to v6.23.3\n"
+	expected += " - fix(curriculum): adjusted hint img src\n"
+	expected += " - fix(deps): update dependency @stripe/react-stripe-js to v1.7.1\n"
+	expected += " - chore(deps): update storybook monorepo to v6.4.21\n"
+	expected += " - chore(deps): update dependency @types/react-dom to v17.0.15\n"
+	expected += " - chore(deps): update dependency @types/react to v17.0.44\n"
+	expected += " - chore(deps): update dependency @testing-library/jest-dom to v5.16.4\n"
+	expected += " - chore(deps): update babel monorepo to v7.17.9\n"
+	expected += " - chore(i18n,learn): processed translations\n"
+	expected += " - fix: handle missing sound saga payloads\n"
+	expected += " - chore(i18n,client): processed translations\n"
+	expected += " - fix(curriculum): include note about counting spaces by .length property\n"
+	expected += " - fixed a typo in basic-node-and-express intro\n"
+	expected += " - chore(i18n,client): processed translations\n"
+	expected += " - feat: update footer Apr 2022\n"
+	expected += " - feat: add secure donation border to donation form\n"
+	expected += "2 Pull Requests Open\n"
+	expected += " - feat(ui-components): add support for link to Button component\n"
+	expected += " - feat(ui-components): add states and full-width support to Button component\n"
+	expected += "2 Pull Requests in Draft state\n"
+	expected += " - feat(ui-components): add support for link to Button component\n"
+	expected += " - feat: add challenge type to mobile\n"
 	if actual != expected {
-		t.Error(fmt.Sprintf("BuildPrintMessage failed, got %s want %s", actual, expected))
+		t.Error(fmt.Sprintf("BuildPrintMessage failed, got \"%s\" want \"%s\"", actual, expected))
 	}
 }
 
@@ -124,9 +162,9 @@ func TestSendEmailDryRun(t *testing.T) {
 	issues.Repo = repo
 	issues.StartDate = githubDateLastWeek
 	issues.EndDate = githubDateToday
-	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
-	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
-	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
 
 	fromEmailAddress := os.Getenv("EMAIL_ADDRESS_FROM")
 	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
@@ -148,9 +186,9 @@ func TestSendEmail(t *testing.T) {
 	issues.Repo = repo
 	issues.StartDate = githubDateLastWeek
 	issues.EndDate = githubDateToday
-	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
-	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
-	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+	issues.getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
 
 	fromEmailAddress := os.Getenv("EMAIL_ADDRESS_FROM")
 	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
@@ -173,9 +211,9 @@ func TestSendEmail(t *testing.T) {
 //	issues.Repo = repo
 //	issues.StartDate = githubDateLastWeek
 //	issues.EndDate = githubDateToday
-//	issues.ClosedIssues = getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
-//	issues.OpenIssues = getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
-//	issues.DraftIssues = getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
+//	issues.getClosed(githubToken, repo, githubDateLastWeek, githubDateToday)
+//	issues. getOpen(githubToken, repo, githubDateLastWeek, githubDateToday)
+//	issues.getDraft(githubToken, repo, githubDateLastWeek, githubDateToday)
 //
 //	fromEmailAddress := ""
 //	toEmailAddress := os.Getenv("EMAIL_ADDRESS_TO")
